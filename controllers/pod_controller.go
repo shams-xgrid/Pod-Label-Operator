@@ -57,7 +57,7 @@ func (r *PodReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.R
 	log := r.Log.WithValues("pod", req.NamespacedName)
 
 	/*
-			STEP # 1 --> Fetch the Pod from Kubernetes API
+			Step # 1 --> Fetch the Pod from Kubernetes API
 	*/
 
 	var pod corev1.Pod
@@ -71,7 +71,34 @@ func (r *PodReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.R
 		log.Error(err, "Unable to Fetch Pod.")
 		return ctrl.Result{}, err
 	}
-	
+
+	/*
+			Step # 2 --> Adding or Removing the Label
+	*/
+
+	labelShouldBePresent := pod.Annotations[addPodNameLabelAnnotation] == "true"
+	labelIsPresent := pod.Labels[podNameLable] == pod.Name
+
+	if labelShouldBePresent == labelIsPresent {
+		// When desired state and actual state of the pod are equal
+		// No further action will be taken by the controller at this point.
+		log.Info("No Update Required")
+		return ctrl.Result{}, nil
+	}
+
+	if labelShouldBePresent {
+		// When label is not set, we will set the label to Pod here.
+		if pod.Labels == nil {
+			pod.Labels = make(map[string]string)
+		}
+		pod.Labels[podNameLable] = pod.Name
+		log.Info("Adding Label")
+	} else {
+		// If pod has label but it shouldn't be there, we will remove it here.
+		delete(pod.Labels, podNameLable)
+		log.Info("Removing Label")
+	}
+
 	return ctrl.Result{}, nil
 }
 
